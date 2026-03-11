@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PythonQuest — Master Python</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     TITLE SCREEN
+══════════════════════════════════════════════════════ -->
+<div id="titleScreen" class="screen active">
+  <div class="title-wrap">
+    <div class="pixel-snake">🐍</div>
+    <h1 class="title-logo">PYTHON<br>QUEST</h1>
+    <p class="title-sub">MASTER PYTHON · EARN XP · CONQUER WORLDS</p>
+    <p class="tagline">
+      An epic RPG journey through Python — from "Hello World" to OOP, files, and beyond.
+      Write <strong>real Python</strong> that actually runs in your browser via Pyodide!
+    </p>
+    <div class="stat-showcase">
+      <div class="sc-stat"><span class="sc-num" id="sc-lessons">{{ lessons|length }}</span><span class="sc-label">LESSONS</span></div>
+      <div class="sc-stat"><span class="sc-num" id="sc-challenges">{{ total_challenges }}</span><span class="sc-label">CHALLENGES</span></div>
+      <div class="sc-stat"><span class="sc-num">{{ worlds|length }}</span><span class="sc-label">WORLDS</span></div>
+      <div class="sc-stat"><span class="sc-num">🐍</span><span class="sc-label">REAL PYTHON</span></div>
+    </div>
+    <button class="btn-start" id="btnStart">▶ BEGIN QUEST</button>
+    <div class="pyodide-status" id="pyodideStatus">⏳ Pre-loading Python engine…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     GAME SCREEN
+══════════════════════════════════════════════════════ -->
+<div id="gameScreen" class="screen">
+
+  <!-- HUD -->
+  <header class="hud">
+    <span class="hud-title">⚡ PYTHONQUEST</span>
+    <div class="stat-pill">⭐ <span class="val" id="hudXP">0</span> XP</div>
+    <div class="stat-pill">🎮 Lv <span class="val" id="hudLvl">1</span>
+      <div class="xp-bar"><div class="xp-fill" id="xpBar" style="width:0%"></div></div>
+    </div>
+    <div class="stat-pill">🔥 <span class="val" id="hudStreak">0</span></div>
+    <div class="stat-pill">✅ <span class="val" id="hudDone">0</span>/{{ total_challenges }}</div>
+    <div class="stat-pill py-status" id="pyStatus">⏳ Loading Python…</div>
+  </header>
+
+  <div class="game-body">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar-left">
+      <div class="sidebar-section">
+        <div class="sidebar-label">WORLD MAP</div>
+        <div class="world-map" id="worldMap">
+          {% for w in worlds %}
+          <div class="world-node" data-world="{{ w.id }}" onclick="jumpToWorld({{ w.id }})">
+            <span class="world-node-icon">{{ w.icon }}</span>
+            <span class="world-node-name">{{ w.name }}</span>
+            <div class="world-progress-mini" id="wProg{{ w.id }}">0/0</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">LESSONS</div>
+        <ul class="topic-list" id="topicList">
+          {% for lesson in lessons %}
+          <li class="topic-item" data-idx="{{ loop.index0 }}" onclick="loadLesson({{ loop.index0 }})">
+            <span class="topic-dot"></span>
+            <span>{{ lesson.icon }} {{ lesson.title }}</span>
+            <span class="topic-prog" id="tprog{{ loop.index0 }}">0/{{ lesson.challenges|length }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="lesson-area" id="lessonArea">
+
+        <!-- Quest Header -->
+        <div class="quest-header" id="questHeader"></div>
+
+        <!-- Story Box -->
+        <div class="story-box" id="storyBox"></div>
+
+        <!-- Theory -->
+        <div class="theory-section" id="theorySection">
+          <div class="theory-label">📚 THEORY &amp; CONCEPTS</div>
+          <div class="theory-body" id="theoryBody"></div>
+        </div>
+
+        <!-- Examples -->
+        <div id="examplesSection"></div>
+
+        <!-- Challenge Progress Bar -->
+        <div class="challenge-progress" id="challengeProgress">
+          <div class="cp-row">
+            <span>CHALLENGES</span><span id="cpText">0/0</span>
+          </div>
+          <div class="cp-bar"><div class="cp-fill" id="cpFill" style="width:0%"></div></div>
+        </div>
+
+        <!-- Challenge Tabs -->
+        <div class="challenge-nav" id="challengeNav"></div>
+
+        <!-- Active Challenge -->
+        <div class="challenge-section" id="challengeSection">
+          <div class="challenge-header">
+            <span class="challenge-title-label" id="chTitle">⚡ CHALLENGE 1</span>
+            <span class="difficulty-badge" id="chDiff"></span>
+            <span class="challenge-xp" id="chXp"></span>
+          </div>
+          <div class="challenge-desc" id="chDesc"></div>
+          <div class="expected-output">
+            <div class="expected-label">📋 EXPECTED OUTPUT</div>
+            <div id="chExpected"></div>
+          </div>
+          <textarea class="code-editor" id="codeEditor"
+            placeholder="# Write your Python code here…" spellcheck="false" rows="7"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-run" id="btnRun" onclick="runChallenge()">▶ RUN &amp; CHECK</button>
+            <button class="btn btn-hint" onclick="toggleHint()">💡 HINT</button>
+            <button class="btn btn-next" id="btnNextChallenge" onclick="nextChallenge()">NEXT ▶</button>
+            <button class="btn btn-skip" onclick="prevChallenge()">◀ PREV</button>
+          </div>
+          <pre class="hint-box" id="hintBox" style="display:none"></pre>
+          <div class="output-box" id="outputBox" style="display:none"></div>
+        </div>
+
+        <!-- Live Python Compiler -->
+        <div class="compiler-panel">
+          <div class="compiler-toolbar">
+            <span class="compiler-label">🐍 LIVE PYTHON COMPILER</span>
+            <span class="compiler-status" id="compilerStatus">READY</span>
+            <button class="btn-run-live" id="btnRunLive" onclick="runLive()">▶ RUN</button>
+            <button class="btn-clear-live" onclick="clearLive()">✕ CLEAR</button>
+          </div>
+          <textarea class="live-editor" id="liveEditor" spellcheck="false"
+># Freeform Python Sandbox — try anything!
+print("🐍 Python is running in your browser!")
+
+for i in range(1, 6):
+    print(f"{'★' * i} Level {i}")
+
+# Try a quick list comprehension
+squares = [x**2 for x in range(1, 8)]
+print("Squares:", squares)</textarea>
+          <div class="compiler-output-label">
+            <span>OUTPUT</span>
+            <span class="powered-by">Powered by Pyodide (Python in WebAssembly)</span>
+          </div>
+          <div class="compiler-output out-idle" id="liveOutput">▶ Click RUN to execute Python code</div>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="quiz-box" id="quizSection"></div>
+
+        <!-- Next Lesson CTA -->
+        <div id="nextLessonCta" style="text-align:center;margin:1.5rem 0;display:none">
+          <button class="btn btn-next btn-next-lesson" id="btnNextLesson" onclick="nextLesson()">
+            ⚡ NEXT LESSON ▶
+          </button>
+        </div>
+
+      </div><!-- /lesson-area -->
+    </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar-right">
+      <div class="sidebar-section">
+        <div class="sidebar-label">OVERALL PROGRESS</div>
+        <div class="progress-pct" id="overallPct">0%</div>
+        <div class="progress-label">Completion</div>
+        <div id="worldBars" style="margin-top:1rem">
+          {% for w in worlds %}
+          <div class="mini-progress">
+            <div class="mini-progress-label">
+              <span>{{ w.icon }} {{ w.name }}</span>
+              <span id="wpct{{ w.id }}">0%</span>
+            </div>
+            <div class="mini-bar"><div class="mini-fill" id="wbar{{ w.id }}" style="width:0%"></div></div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-label">ACHIEVEMENTS</div>
+        <div id="achievementList">
+          {% for a in achievements %}
+          <div class="achievement locked" id="ach-{{ a.id }}">
+            <div class="ach-icon">{{ a.icon }}</div>
+            <div>
+              <div class="ach-name">{{ a.name }}</div>
+              <div class="ach-desc">{{ a.desc }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /game-body -->
+</div><!-- /gameScreen -->
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif">
+  <div class="notif-title" id="notifTitle"></div>
+  <div class="notif-body"  id="notifBody"></div>
+</div>
+
+<!-- DATA INJECTION FROM FLASK/JINJA2 -->
+<script>
+  const LESSONS_DATA      = {{ lessons_json|safe }};
+  const WORLDS_DATA       = {{ worlds_json|safe }};
+  const ACHIEVEMENTS_DATA = {{ achievements_json|safe }};
+  const TOTAL_CHALLENGES  = {{ total_challenges }};
+  const XP_PER_LEVEL      = 200;
+</script>
+
+<!-- Pyodide (Python in WebAssembly) -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<script src="/static/js/main.js"></script>
+</body>
+</html>
